@@ -15,7 +15,6 @@ int		main(void)
 	int		*heap_var;
 
 	heap_var = malloc(sizeof(int));
-
 	printf("static_var: %p\nglobal_var: %p\n", &static_var, &global_var);
 	printf("stack_var: %p\nheap_var: %p\n", &stack_var, heap_var);
 	free(heap_var);
@@ -65,7 +64,6 @@ int		main(void)
 	int		*heap_var;
 
 	heap_var = malloc(sizeof(int));
-
 	printf("static_var: %p\nglobal_var: %p\n", &static_var, &global_var);
 	printf("stack_var: %p\nheap_var: %p\n", &stack_var, heap_var);
 	free(heap_var);
@@ -131,7 +129,7 @@ static_var: 0x404038
 global_var: 0x40403c
 ```
 
-We will find each segment constructed from the executable image of a.out, whose full path is
+We will find each segment constructed from the executable image of a.out.loop, whose full path is
 provided in the rightmost column. Reading the first two columns from the left, we can see the
 range of virtual addresses along with their permissions (read, write, execute).
 
@@ -144,10 +142,15 @@ process, they do not need to be created from a file! Instead, these segments are
 segments of _anonymous memory_, which is just a fancy way of saying zero-filled memory that
 does not belong to any file and does NOT need to be written to disk after its been modified.
 
+To be more precise, the stack and heap segments can be swapped out of memory by the paging
+daemon for memory management purposes, but they will never be written to disk to be used 
+by another process once our current process exits. The pages that make up these segments
+will simply be cleared and freed for use by other processes.
+
 The nature of these two segments is apparent when we observe their entries in the /proc printout:
 
 ```txt
-0214d000-0216e000 rw-p 00000000 00:00 0             [heap]
+00000214d000-00000216e000 rw-p 00000000 00:00 0     [heap]
 7ffcbb1ab000-7ffcbb1cd000 rw-p 00000000 00:00 0     [stack]
 ```
 
@@ -177,6 +180,6 @@ you can get a rough idea of how large each of segments can grow in virtual space
 
 Hence, the potential sizes of these segments on 64bit machines are ENORMOUS! Of course, we
 aren't taking into account red zones or process rlimits here, but it's fun to see just how
-far we've come from 32-bit OSes :).
+far we've come from 32-bit OSes. :)
 
  
