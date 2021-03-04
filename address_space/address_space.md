@@ -157,8 +157,8 @@ The nature of these two segments is apparent when we observe their entries in th
 Notice that instead of a source file, these segments are simply identified as what they are.
 Given that the heap grows from the end of the executable image towards the stack it makes sense
 that its range is 0214d000-0216e000, while the stack which grows down from almost the top of
-the virtual address space (the stack is beneath the command line arguments, environment, 
-signal trampoline, etc.) is within the range 7ffcbb1ab000-7ffcbb1cd000.
+the virtual address space (the stack is beneath the vvar, vsdo, and vsyscall) is within the
+range 7ffcbb1ab000-7ffcbb1cd000.
 
 One final comment before we expand our understanding to include kernel space, we often learn
 that shared libraries are stored between the stack and the heap such that both of those
@@ -182,4 +182,162 @@ Hence, the potential sizes of these segments on 64bit machines are ENORMOUS! Of 
 aren't taking into account red zones or process rlimits here, but it's fun to see just how
 far we've come from 32-bit OSes. :)
 
- 
+Now that we have seen how to analyze the user segments of the process's virtual address
+space, - or in other words, _userspace_ - it is time to broaden our perspective to encompass
+_kernel space_ as well. We can use the _/proc_ filesystem to analyze the kernel's segments
+in much the same way as we did with our process. The only difference is that we will
+obtain the ranges by using symbols.
+
+```txt
+# sudo cat /proc/kallsyms | grep _text | head -1
+ffffffff92000000 T _text
+
+# sudo cat /proc/kallsyms | grep _etext | head -1
+ffffffff92e00ed1 T _etext
+
+# sudo cat /proc/kallsyms | grep _sdata | head -1
+
+ffffffff93600000 D _sdata
+
+# sudo cat /proc/kallsyms | grep _edata | head -1
+ffffffff93858400 D _edata
+
+# sudo cat /proc/kallsyms | grep __bss_start | head -1
+ffffffff94204000 B __bss_start
+
+# sudo cat /proc/kallsyms | grep __bss_stop | head -1
+ffffffff94800000 B __bss_stop
+
+# sudo cat /proc/kallsyms | grep B\ _end
+ffffffff9482c000 B _end
+```
+
+Given that the mapping of a virtual address in kernel space to its physical address
+is simply `pa = va - __PAGE_OFFSET`, we can easily determine the physical locations
+of all the kernel segments.
+
+```txt
+For __PAGE_OFFSET = 0xffff888000000000 ...
+
+_text: 0x777F92000000
+
+_etext: 0x777F92E00ED1
+
+_sdata: 0x777F93600000
+
+_edata: 0x777F93858400
+
+__bss_start: 0x777F94204000
+
+__bss_stop: 0x777F94800000
+
+_end: 0x777F9482C000
+```
+
+Putting everything we learned together, we can create a visualization of
+our program's virtual address space!
+
+```txt
+_____________________ 0xffffffff9482c000 _end
+|XXXXXXXXXXXXXXXXXXX|
+|-------------------| 0xffffffff94800000
+|                   |
+| __bss             |
+|___________________| 0xffffffff94204000
+|XXXXXXXXXXXXXXXXXXX|
+|-------------------| 0xffffffff93858400
+|                   |
+| _data             |
+|___________________| 0xffffffff93600000
+|XXXXXXXXXXXXXXXXXXX|
+|-------------------| 0xffffffff92e00ed1
+|                   |
+| _text             |
+|___________________| 0xffffffff92000000
+|XXXXXXXXXXXXXXXXXXX|
+|-------------------| 0xffffffffff601000
+|                   |
+| vsyscall          |
+|___________________| 0xffffffffff600000
+|XXXXXXXXXXXXXXXXXXX|
+|-------------------| 0x00007ffcbb1e5000
+|                   |
+| vdso              |
+|___________________| 0x00007ffcbb1e3000
+|                   |
+| vvar              |
+|___________________| 0x00007ffcbb1df000
+|XXXXXXXXXXXXXXXXXXX|
+|-------------------| 0x00007ffcbb1cd000
+|                   |
+| Stack             |
+|___________________| 0x00007ffcbb1ab000
+|XXXXXXXXXXXXXXXXXXX|
+|-------------------| 0x00007f1e81650000
+|                   |
+| unknown           |
+|___________________| 0x00007f1e8164f000
+|                   |
+| ld-2.29.so data   |
+|___________________| 0x00007f1e8164e000
+|                   |
+| ld-2.29.so        |
+|___________________| 0x00007f1e8164d000
+|XXXXXXXXXXXXXXXXXXX|
+|-------------------| 0x00007f1e8164c000
+|                   |
+| ld-2.29.so        |
+|___________________| 0x00007f1e81644000
+|                   |
+| ld-2.29.so text   |
+|___________________| 0x00007f1e81624000
+|                   |
+| ld-2.29.so        |
+|___________________| 0x00007f1e81623000
+|XXXXXXXXXXXXXXXXXXX|
+|-------------------| 0x00007f1e81602000
+|                   |
+| unknown           |
+|___________________| 0x00007f1e815fc000
+|                   |
+| libc-2.29.so data |
+|___________________| 0x00007f1e815fa000
+|                   |
+| libc-2.29.so      |
+|___________________| 0x00007f1e815f6000
+|                   |
+| libc-2.29.so      |
+|___________________| 0x00007f1e815f5000
+|                   |
+| libc-2.29.so      |
+|___________________| 0x00007f1e815a9000
+|                   |
+| libc-2.29.so text |
+|___________________| 0x00007f1e8145c000
+|                   |
+| libc-2.29.so      |
+|___________________| 0x00007f1e8143a000
+|                   |
+| heap              |
+|___________________| 0x000000000214d000
+|XXXXXXXXXXXXXXXXXXX|
+|-------------------| 0x0000000000405000
+|                   |
+| _sdata            |
+|___________________| 0x0000000000404000
+|                   |
+| unknown           |
+|___________________| 0x0000000000403000
+|                   |
+| unknown           |
+|___________________| 0x0000000000402000
+|                   |
+| _text             |
+|___________________| 0x0000000000401000
+|                   |
+| unknown           |
+|___________________| 0x0000000000400000
+|                   |
+| NULL ref catch    |
+|___________________| 0x0
+```
