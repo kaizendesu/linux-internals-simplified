@@ -10,7 +10,8 @@ review what we covered in the last section:
 4. Saw how _ioctl_ is used to modify the terminal settings for the child process
 5. Saw how *rt_sigaction* and *rt_sigprocmask* modify the signal handlers and blocked signals for the child process
 6. Saw how _pipe_ was used to create a unidirectional pipe
-7. Saw how _clone_ was used to create the child process with no stack to executethe `./a.out` command
+7. Saw how _clone_ was used to create the child process with no stack to execute the `./a.out` command
+8. Saw how _wait4_ was used to wait for the child process to change its state
 
 Now it is time to see how the child process becomes the a.out program and
 finally executes our shell command. In order to trace this, we must use
@@ -18,6 +19,7 @@ _strace_ again.
 
 ```txt
 # strace -o cmd_trace.txt ./a.out
+
 # cat cmd_trace.txt
 execve("./a.out", ["./a.out"], 0x7ffddc9d4f70 /* 67 vars */) = 0
 brk(NULL)                               = 0x1b8c000

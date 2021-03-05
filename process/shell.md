@@ -104,23 +104,8 @@ NAME
        select, pselect, FD_CLR, FD_ISSET, FD_SET, FD_ZERO - synchronous I/O multiplexing
 
 SYNOPSIS
-       /* According to POSIX.1-2001, POSIX.1-2008 */
-       #include <sys/select.h>
-
-       /* According to earlier standards */
-       #include <sys/time.h>
-       #include <sys/types.h>
-       #include <unistd.h>
-
        int select(int nfds, fd_set *readfds, fd_set *writefds,
                   fd_set *exceptfds, struct timeval *timeout);
-
-       void FD_CLR(int fd, fd_set *set);
-       int  FD_ISSET(int fd, fd_set *set);
-       void FD_SET(int fd, fd_set *set);
-       void FD_ZERO(fd_set *set);
-
-       #include <sys/select.h>
 
        int pselect(int nfds, fd_set *readfds, fd_set *writefds,
                    fd_set *exceptfds, const struct timespec *timeout,
@@ -152,36 +137,6 @@ RETURN VALUE
        interesting happens.  On error, -1 is returned, and errno is set to indicate the error;
        the file descriptor sets are unmodified, and timeout becomes undefined.
 
-EXAMPLE
-       int main(void)
-       {
-           fd_set rfds;
-           struct timeval tv;
-           int retval;
-
-           /* Watch stdin (fd 0) to see when it has input. */
-
-           FD_ZERO(&rfds);
-           FD_SET(0, &rfds);
-
-           /* Wait up to five seconds. */
-
-           tv.tv_sec = 5;
-           tv.tv_usec = 0;
-
-           retval = select(1, &rfds, NULL, NULL, &tv);
-           /* Don't rely on the value of tv now! */
-
-           if (retval == -1)
-               perror("select()");
-           else if (retval)
-               printf("Data is available now.\n");
-               /* FD_ISSET(0, &rfds) will be true. */
-           else
-               printf("No data within five seconds.\n");
-
-           exit(EXIT_SUCCESS);
-       }
 Linux                    2017-09-15                                              SELECT(2)
 ```
 
@@ -227,8 +182,6 @@ NAME
        ioctl - control device
 
 SYNOPSIS
-       #include <sys/ioctl.h>
-
        int ioctl(int fd, unsigned long request, ...);
 
 DESCRIPTION
@@ -268,16 +221,8 @@ NAME
        sigaction, rt_sigaction - examine and change a signal action
 
 SYNOPSIS
-       #include <signal.h>
-
        int sigaction(int signum, const struct sigaction *act,
                      struct sigaction *oldact);
-
-   Feature Test Macro Requirements for glibc (see feature_test_macros(7)):
-
-       sigaction(): _POSIX_C_SOURCE
-
-       siginfo_t: _POSIX_C_SOURCE >= 199309L
 
 DESCRIPTION
        The sigaction() system call is used to change the action taken by a process on
@@ -291,15 +236,6 @@ DESCRIPTION
 RETURN VALUE
        sigaction() returns 0 on success; on error, -1 is returned, and errno is set
        to indicate the error.
-
-ERRORS
-       EFAULT act or oldact points to memory which is not a valid part of the process address space.
-
-       EINVAL An  invalid  signal  was  specified.   This  will also be generated if an attempt is made to change the action for SIGKILL or SIGSTOP, which cannot be
-              caught or ignored.
-
-CONFORMING TO
-       POSIX.1-2001, POSIX.1-2008, SVr4.
 
 Linux                    2017-09-15                                              SIGACTION(2)
 ```
@@ -328,8 +264,6 @@ NAME
        sigprocmask, rt_sigprocmask - examine and change blocked signals
 
 SYNOPSIS
-       #include <signal.h>
-
        /* Prototype for the glibc wrapper function */
        int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
 
@@ -340,10 +274,6 @@ SYNOPSIS
        /* Prototype for the legacy system call (deprecated) */
        int sigprocmask(int how, const old_kernel_sigset_t *set,
                        old_kernel_sigset_t *oldset);
-
-   Feature Test Macro Requirements for glibc (see feature_test_macros(7)):
-
-       sigprocmask(): _POSIX_C_SOURCE
 
 DESCRIPTION
        sigprocmask() is used to fetch and/or change the signal mask of the calling
@@ -401,13 +331,7 @@ NAME
        pipe, pipe2 - create pipe
 
 SYNOPSIS
-       #include <unistd.h>
-
        int pipe(int pipefd[2]);
-
-       #define _GNU_SOURCE             /* See feature_test_macros(7) */
-       #include <fcntl.h>              /* Obtain O_* constant definitions */
-       #include <unistd.h>
 
        int pipe2(int pipefd[2], int flags);
 
@@ -430,9 +354,8 @@ RETURN VALUE
 Linux                    2017-11-26                                              PIPE(2)
 ```
 
-Now that all of the previous functions have been explored, we finally get to
-the function call that spawns a new process that will be execve'd into our
-program.
+Now that all of the previous functions have been explored, we have reached the
+_clone()_ system call.
 
 ```txt
 CLONE(2)                 Linux Programmer's Manual                               CLONE(2)
@@ -441,16 +364,9 @@ NAME
        clone, __clone2 - create a child process
 
 SYNOPSIS
-       /* Prototype for the glibc wrapper function */
-
-       #define _GNU_SOURCE
-       #include <sched.h>
-
        int clone(int (*fn)(void *), void *child_stack,
                  int flags, void *arg, ...
                  /* pid_t *ptid, void *newtls, pid_t *ctid */ );
-
-       /* For the prototype of the raw system call, see NOTES */
 
 DESCRIPTION
        clone() creates a new process, in a manner similar to fork(2).
@@ -511,16 +427,235 @@ RETURN VALUE
 Linux                    2017-09-15                                              CLONE(2)
 ```
 
-From the above man page, we can determine that the following command from the
-trace file clones a child process with no stack that will execute the command
-`./a.out` and return its tid 5603. The details of the flags, the child\_tidptr,
-and the missing fn argument from the strace will be discussed in more detail in
-a later set of notes when the internals of the _clone()_ system call are analyzed.
+From the above man page, we determine that the _clone_ system call below creates
+a child process with no stack and returns its pid/tid 5603. The details of the flags,
+the child\_tidptr, and the missing fn argument from the strace will be discussed in
+more detail in a later set of notes when the internals of the _clone()_ system call
+are analyzed.
 
 ```txt
 clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, child_tidptr=0x7f3a7242ca10) = 5603
 ```
 
-For now though, we have traced every system call of the shell command `./a.out` up to
-creation of a new process that will be execve'd with our program. We will continue
-tracing the execution of `./a.out` in the next set of notes.
+For now though, let us examine the last set of system calls before the bash shell
+waits for the newly created child process.
+
+```txt
+# cat shell_trace.txt | head -52 | tail -9
+setpgid(5603, 5603)                     = 0
+rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
+rt_sigprocmask(SIG_BLOCK, [CHLD], [], 8) = 0
+close(4)                                = 0
+close(5)                                = 0
+ioctl(255, TIOCGPGRP, [5603])           = 0
+rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
+rt_sigprocmask(SIG_BLOCK, [CHLD], [], 8) = 0
+wait4(-1, [{WIFEXITED(s) && WEXITSTATUS(s) == 23}], WSTOPPED|WCONTINUED, NULL) = 5603
+```
+
+Of these 9 system calls, we are only interested in two of them, the first one
+being _setpgid_. This system call sets the pgid of the child process to 5603.
+Basically, we use this call to set the child process's pgid equal to its pid.
+
+The second system call we are interested in, and the last one we execute
+before we switch to the child process's point-of-view, is _wait4_. This is
+a specialized system call, so it will need two man pages to fully understand it.
+
+```txt
+WAIT4(2)                 Linux Programmer's Manual                               WAIT4(2)
+
+NAME
+       wait3, wait4 - wait for process to change state, BSD style
+
+SYNOPSIS
+       pid_t wait3(int *wstatus, int options,
+                   struct rusage *rusage);
+
+       pid_t wait4(pid_t pid, int *wstatus, int options,
+                   struct rusage *rusage);
+
+DESCRIPTION
+       These functions are nonstandard; in new programs, the use of waitpid(2) or waitid(2) is preferable.
+
+       The  wait3()  and wait4() system calls are similar to waitpid(2), but additionally return resource usage information about the child in the structure pointed
+       to by rusage.
+
+       Other than the use of the rusage argument, the following wait3() call:
+
+           wait3(wstatus, options, rusage);
+
+       is equivalent to:
+
+           waitpid(-1, wstatus, options);
+
+       Similarly, the following wait4() call:
+
+           wait4(pid, wstatus, options, rusage);
+
+       is equivalent to:
+
+           waitpid(pid, wstatus, options);
+
+       In other words, wait3() waits of any child, while wait4() can be used to select a specific child, or children, on which to wait.   See  wait(2)  for  further
+       details.
+
+       If rusage is not NULL, the struct rusage to which it points will be filled with accounting information about the child.  See getrusage(2) for details.
+
+RETURN VALUE
+       As for waitpid(2).
+
+Linux                    2018-04-30                                              WAIT4(2)
+
+WAIT(2)                  Linux Programmer's Manual                               WAIT(2)
+
+NAME
+       wait, waitpid, waitid - wait for process to change state
+
+SYNOPSIS
+       #include <sys/types.h>
+       #include <sys/wait.h>
+
+       pid_t wait(int *wstatus);
+
+       pid_t waitpid(pid_t pid, int *wstatus, int options);
+
+       int waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options);
+                       /* This is the glibc and POSIX interface; see
+                          NOTES for information on the raw system call. */
+
+   Feature Test Macro Requirements for glibc (see feature_test_macros(7)):
+
+       waitid():
+           Since glibc 2.26: _XOPEN_SOURCE >= 500 ||
+               _POSIX_C_SOURCE >= 200809L
+           Glibc 2.25 and earlier:
+               _XOPEN_SOURCE
+                   || /* Since glibc 2.12: */ _POSIX_C_SOURCE >= 200809L
+                   || /* Glibc versions <= 2.19: */ _BSD_SOURCE
+
+DESCRIPTION
+       All of these system calls are used to wait for state changes in a child of the
+       calling process, and obtain information about the child whose state has changed.
+       A state change is considered to be: the child terminated; the child was stopped by
+       a signal; or the child was resumed by a signal. In the case of a terminated child,
+       performing a wait allows the system to release the resources associated with the
+       child; if a wait is not performed, then the terminated child remains in a "zombie"
+       state(see NOTES below).
+
+       If a child has already changed state, then these calls return immediately. Otherwise,
+       they block until either a child changes state or a signal handler interrupts the
+       call (assuming that system calls are not automatically restarted using the SA_RESTART
+       flag of sigaction(2)). In the remainder of this page, a child whose state has changed
+       and which has not yet been waited upon by one of these system calls is termed waitable.
+
+   wait() and waitpid()
+       The wait() system call suspends execution of the calling thread until one of its
+       children terminates.  The call wait(&wstatus) is equivalent to:
+
+           waitpid(-1, &wstatus, 0);
+
+       The waitpid() system call suspends execution of the calling thread until a child
+       specified by pid argument has changed state.  By  default,  waitpid()  waits only for
+       terminated children, but this behavior is modifiable via the options argument, as described below.
+
+       The value of pid can be:
+
+       < -1   meaning wait for any child process whose process group ID is equal to the absolute value of pid.
+
+       -1     meaning wait for any child process.
+
+       0      meaning wait for any child process whose process group ID is equal to that of the calling process.
+
+       > 0    meaning wait for the child whose process ID is equal to the value of pid.
+
+       The value of options is an OR of zero or more of the following constants:
+
+       WCONTINUED (since Linux 2.6.10)
+                   also return if a stopped child has been resumed by delivery of SIGCONT.
+
+       (For Linux-only options, see below.)
+
+       If wstatus is not NULL, wait() and waitpid() store status information in the int to which it points. This
+       integer can be inspected with the following macros (which take the integer itself as an argument, not
+       a pointer to it, as is done in wait() and waitpid()!):
+
+       WIFEXITED(wstatus)
+              returns true if the child terminated normally, that is, by calling exit(3) or _exit(2), or by returning from main().
+
+       WEXITSTATUS(wstatus)
+              returns  the  exit  status  of  the child.  This consists of the least significant 8 bits of the status argument
+              that the child specified in a call to exit(3) or _exit(2) or as the argument for a return statement in main().
+              This macro should be employed only if WIFEXITED returned true.
+
+   waitid()
+       The waitid() system call (available since Linux 2.6.9) provides more precise control over which child state changes to wait for.
+
+       The idtype and id arguments select the child(ren) to wait for, as follows:
+
+       idtype == P_PID
+              Wait for the child whose process ID matches id.
+
+       idtype == P_PGID
+              Wait for any child whose process group ID matches id.
+
+       idtype == P_ALL
+              Wait for any child; id is ignored.
+
+       The child state changes to wait for are specified by ORing one or more of the following flags in options:
+
+       WEXITED     Wait for children that have terminated.
+
+       WSTOPPED    Wait for children that have been stopped by delivery of a signal.
+
+       WCONTINUED  Wait for (previously stopped) children that have been resumed by delivery of SIGCONT.
+
+       The following flags may additionally be ORed in options:
+
+       WNOHANG     As for waitpid().
+
+       WNOWAIT     Leave the child in a waitable state; a later wait call can be used to again retrieve the child status information.
+
+       Upon successful return, waitid() fills in the following fields of the siginfo_t structure pointed to by infop:
+
+       si_pid      The process ID of the child.
+
+       si_uid      The real user ID of the child.  (This field is not set on most other implementations.)
+
+       si_signo    Always set to SIGCHLD.
+
+       si_status   Either the exit status of the child, as given to _exit(2) (or exit(3)), or the signal that caused the child to
+                   terminate, stop, or continue. The si_code field can be used to determine how to interpret this field.
+
+       si_code     Set  to  one  of:  CLD_EXITED (child called _exit(2)); CLD_KILLED (child killed by signal); CLD_DUMPED (child killed by signal, and dumped core);
+                   CLD_STOPPED (child stopped by signal); CLD_TRAPPED (traced child has trapped); or CLD_CONTINUED (child continued by SIGCONT).
+
+       If WNOHANG was specified in options and there were no children in a waitable state, then waitid() returns 0 immediately and the state of the siginfo_t struc‐
+       ture  pointed  to  by infop depends on the implementation.  To (portably) distinguish this case from that where a child was in a waitable state, zero out the
+       si_pid field before the call and check for a nonzero value in this field after the call returns.
+
+       POSIX.1-2008 Technical Corrigendum 1 (2013) adds the requirement that when WNOHANG is specified in options and there were no children in  a  waitable  state,
+       then waitid() should zero out the si_pid and si_signo fields of the structure.  On Linux and other implementations that adhere to this requirement, it is not
+       necessary to zero out the si_pid field before calling waitid().  However, not all implementations follow the POSIX.1 specification on this point.
+
+RETURN VALUE
+       wait(): on success, returns the process ID of the terminated child; on error, -1 is returned.
+
+       waitpid(): on success, returns the process ID of the child whose state has changed; if WNOHANG was specified and one or  more  child(ren)  specified  by  pid
+       exist, but have not yet changed state, then 0 is returned.  On error, -1 is returned.
+
+       waitid(): returns 0 on success or if WNOHANG was specified and no child(ren) specified by id has yet changed state; on error, -1 is returned.
+
+       Each of these calls sets errno to an appropriate value in the case of an error.
+
+Linux                    2018-04-30                                              WAIT(2)
+```
+
+Hence, bash calls _wait4_ to wait for the first child process that changes its state,
+or in other words, the first child process to exit or be stopped by a signal. We
+know for sure that this wait call stops blocking for child process we created with
+_clone_ because it returns 5603 as the pid.
+
+We have now traced through every system call of the shell command `./a.out` up 
+to the creation of the new process and the bash shell suspending its execution.
+We will continue tracing through `./a.out` from the child process's point-of-view
+in the next set of notes.
