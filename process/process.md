@@ -461,7 +461,7 @@ is unclear from trace what this data is used for or why it needs to be read
 more than once. Following that, _mmap_ is used to create five mappings from
 /lib64/libc.so.6, where the purpose of two read-only mappings is unclear.
 
-Although the purpose some of these mappings are unknown, they are very
+Although the purpose of some of these mappings are unknown, they are very
 reminiscent of the mappings we saw in the address\_space notes. Perhaps
 they will only be clear after examining the internals of the linker
 /lib64/ld-linux-x86-64.so.2.
@@ -485,7 +485,7 @@ Recall that *arch_prctl* merely calls a subcommand to set the value of
 either FS or GS. Thus, the call here sets FS = 0x7ffa6dd9b500.
 
 The *mprotect* call is used to change the protections on memory mappings,
-and make perfect sense with a quick look at its man page.
+and makes perfect sense with a quick look at its man page.
 
 ```txt
 MPROTECT(2)              Linux Programmer's Manual                               MPROTECT(2)
@@ -566,7 +566,7 @@ Following *exit_group*, the rest of the execution picks up where we left off in
 the previous set of notes. However, since the rest of the trace is specific to
 the machinations of bash and is complex enough for its own set of notes, we will
 only list the rest of the trace here before moving on to the source code analysis
-of the most important system calls used in the `./a.out` command.
+of the process related system calls used in the `./a.out` command.
 
 ```txt
 # cat shell_trace.txt | tail -91
