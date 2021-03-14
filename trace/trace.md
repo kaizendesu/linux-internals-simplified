@@ -304,6 +304,24 @@ of the code flow would be the following:
 Hence, we can see that ksys\_write, the function that is called when we do a
 write system call, calls tty\_write after obtaining the offset with \_\_fdget\_pos.
 
+
+Although it is not shown in the code blocks, the biggest issue with using _ftrace_
+as it is described in the book is that it does not trace a particular PID.
+Thankfully, this can be be solved using shell scripts as described at elinux.org/Ftrace.
+
+```bash
+#!/bin/sh
+echo $$ > /sys/kernel/tracing/set_ftrace_pid
+echo function > /sys/kernel/tracing/current_tracer
+exec $*
+```
+
+Assuming the name of the shell script is trace\_command, its usage is:
+
+```txt
+# trace_command a.out
+```
+
 Finally, it is worth showing how to clean up the trace file after using _ftrace_.
 
 ```txt
