@@ -311,15 +311,18 @@ Thankfully, this can be be solved using shell scripts as described at elinux.org
 
 ```bash
 #!/bin/sh
-echo $$ > /sys/kernel/tracing/set_ftrace_pid
-echo function > /sys/kernel/tracing/current_tracer
+
+# Usage: ./trace_command `pwd`/<executable>
+
+FTRACE="/sys/kernel/tracing"
+
+echo $$ > $FTRACE/set_ftrace_pid
+echo function_graph > $FTRACE/current_tracer
+echo 5 > $FTRACE/max_graph_depth
+echo ksys_write > $FTRACE/set_graph_function
+cat /dev/null > $FTRACE/trace
+echo 1 > $FTRACE/tracing_on
 exec $*
-```
-
-Assuming the name of the shell script is trace\_command, its usage is:
-
-```txt
-# trace_command a.out
 ```
 
 Finally, it is worth showing how to clean up the trace file after using _ftrace_.
