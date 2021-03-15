@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Usage: ./trace_pid_command <pid> <function>
+
+echo $1 > $DEBUG/set_ftrace_pid
+echo function_graph > $DEBUG/current_tracer
+echo 5 > $DEBUG/max_graph_depth
+echo $2 > $DEBUG/set_graph_function
+cat /dev/null > $DEBUG/trace
+echo 1 > $DEBUG/tracing_on

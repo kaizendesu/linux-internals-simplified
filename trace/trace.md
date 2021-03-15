@@ -315,11 +315,12 @@ Thankfully, this can be be solved using shell scripts as described at elinux.org
 # Usage: ./trace_command `pwd`/<executable>
 
 FTRACE="/sys/kernel/tracing"
+FCTN="ksys_write"
 
 echo $$ > $FTRACE/set_ftrace_pid
 echo function_graph > $FTRACE/current_tracer
 echo 5 > $FTRACE/max_graph_depth
-echo ksys_write > $FTRACE/set_graph_function
+echo $FCTN > $FTRACE/set_graph_function
 cat /dev/null > $FTRACE/trace
 echo 1 > $FTRACE/tracing_on
 exec $*

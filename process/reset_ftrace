@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Usage: ./reset_ftrace
+
+echo 0 > $DEBUG/tracing_on
+echo nop > $DEBUG/current_tracer
+cat /dev/null > $DEBUG/trace

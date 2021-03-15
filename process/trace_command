@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# Usage: ./trace_command `pwd`/<executable>
+
+FCTN="_do_fork"
+
+echo $$ > $DEBUG/set_ftrace_pid
+echo function_graph > $DEBUG/current_tracer
+echo 5 > $DEBUG/max_graph_depth
+echo $FCTN > $DEBUG/set_graph_function
+cat /dev/null > $DEBUG/trace
+echo 1 > $DEBUG/tracing_on
+exec $*
