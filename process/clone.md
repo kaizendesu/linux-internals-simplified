@@ -15,9 +15,8 @@ int		main(void)
 ```
 
 Naturally, we will begin with the _clone()_ system call. Let's begin with a
-complete _ftrace_ of the _clone()_ system call. First, we will open two tabs
-in Terminal, one in the directory with the our `a.out` program and the other
-inside the debugfs.
+complete _ftrace_ of the _clone()_ system call. For simplicity, we will use a
+max depth of 5 and go no further than that in our analysis.
 
 ```txt
 # ps -ef | grep bash
@@ -791,3 +790,11 @@ elliot     27177   27175  0 21:00 pts/0    00:00:00 grep bash
 # sudo ./reset_ftrace
 ```
 
+In this call graph, the longest and most complex function called is *dup_mm()*,
+which accounts for  437 lines of this 748 line trace. Hence, we can eliminate
+analysis of this function and look at it separately another time; especially
+since its function is clear - it copies the mm structure!
+
+This leaves us to focus on the following critical functions: *dup_task()*,
+*sched_fork()*, *dup_fd()*, *get_task_pid()*,*enqueue_task_fair()* and
+*wake_up_new_task()*.
